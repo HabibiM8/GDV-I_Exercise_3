@@ -605,17 +605,207 @@ void TriangleMesh::generateSphere(QOpenGLFunctions_3_3_Core* f) {
 void TriangleMesh::generateTerrain(unsigned int h, unsigned int w, unsigned int iterations) {
     // TODO(3.1): Implement terrain generation.
 
-    vertices.reserve(4);
-    vertices.emplace_back(0, 0, 0);
-    vertices.emplace_back(0, 0, 10);
-    vertices.emplace_back(10, 0, 10);
-    vertices.emplace_back(10, 0, 0);
+    // Diamond-Square Algorithm:
+    // https://janert.me/blog/2022/the-diamond-square-algorithm-for-terrain-generation/
+    // https://medium.com/@nickobrien/diamond-square-algorithm-explanation-and-c-implementation-5efa891e486f
+    // https://en.wikipedia.org/wiki/Diamond-square_algorithm
 
-    triangles.reserve(2);
-    triangles.emplace_back(0, 1, 2);
-    triangles.emplace_back(0, 2, 3);
+    // 1) Clear any old data.
+    clear();
 
+    // 2) Allocate a 2D heightmap of size (w+1) x (h+1).
+    std::vector<std::vector<float>> heightmap(w + 1, std::vector<float>(h + 1, 0.0f));
+
+    // 3) Initialize corners with random seeds.
+    //    You can fix them or make them random. For instance:
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dist(0.0f, 5.0f); // range for the corner heights
+    heightmap[0][0]         = dist(gen);
+    heightmap[w][0]         = dist(gen);
+    heightmap[0][h]         = dist(gen);
+    heightmap[w][h]         = dist(gen);
+
+    // 4) Perform the Diamond-Square algorithm:
+    //    The 'stepSize' is the current subdivision size; it is halved each iteration.
+    //    The 'roughness' controls how wild the random additions are each iteration.
+    float roughness = 3.0f;  // you can tune or pass in from outside
+    int stepSize    = std::max(w, h); // start with the largest dimension
+
+    while (stepSize > 1) {
+        int halfStep = stepSize / 2;
+
+        // --- Diamond step ---
+        for (int x = halfStep; x < (int)w; x += stepSize) {
+            for (int z = halfStep; z < (int)h; z += stepSize) {
+                float a = heightmap[x - halfStep][z - halfStep];  // top-left
+                float b = heightmap[x + halfStep][z - halfStep];  // top-right
+                float c = heightmap[x - halfStep][z + halfStep];  // bottom-left
+                float d = heightmap[x + halfStep][z + halfStep];  // bottom-right
+                float avg = (a + b + c + d) * 0.25f;
+
+                float offset = dist(gen) * roughness - roughness * 0.5f;
+                heightmap[x][z] = avg + offset;
+            }
+        }
+
+        // --- Square step ---
+        for (int x = 0; x <= (int)w; x += halfStep) {
+            for (int z = ((x / halfStep) % 2 == 0) ? halfStep : 0; z <= (int)h; z += stepSize) {
+                float sum     = 0.0f;
+                int   count   = 0;
+                if ((x - halfStep) >= 0 && (z - halfStep) >= 0) {
+                    sum += heightmap[x - halfStep][z - halfStep]; // top-left
+                    ++count;
+                }
+                if ((x + halfStep) <= (int)w && (z - halfStep) >= 0) {
+                    sum += heightmap[x + halfStep][z - halfStep]; // top-right
+                    ++count;
+                }
+                if ((x - halfStep) >= 0 && (z + halfStep) <= (int)h) {
+                    sum += heightmap[x - halfStep][z + halfStep]; // bottom-left
+                    ++count;
+                }
+                if ((x + halfStep) <= (int)w && (z + halfStep) <= (int)h) {
+                    sum += heightmap[x + halfStep][z + halfStep]; // bottom-right
+                    ++count;
+                }
+                float avg = (count > 0) ? sum / count : 0.0f;
+
+                float offset = dist(gen) * roughness - roughness * 0.5f;
+                heightmap[x][z] = avg + offset;
+            }
+        }
+
+        // Halve the step size and reduce roughness
+        stepSize  /= 2;
+        roughness *= 0.5f;
+    }
+
+    // 5) Build the mesh from the heightmap
+    //    For each grid cell, we create 2 triangles.
+    //    We'll have (w+1)*(h+1) vertices in total.
+    vertices.reserve((w+1)*(h+1));
+    normals.reserve((w+1)*(h+1));
+    colors.reserve((w+1)*(h+1));
+
+    // We also prepare index buffer for triangles:
+    triangles.reserve(w * h * 2);
+
+    // This will help in color calculation:
+    auto computeColor = [&](float heightValue) -> Vec3f {
+        // clamp height for safety
+        heightValue = std::clamp(heightValue, 0.0f, 10.0f);
+
+        // example coloring (very rough):
+        // 0 - 1.5: water (blue)
+        // 1.5 - 2.5: sand (brownish)
+        // 2.5 - 4.0: grass (green)
+        // 4.0 - 6.0: rock (grey)
+        // 6.0+ : snow (white)
+        if (heightValue < 1.5f) return Vec3f(0.0f, 0.0f, 1.0f);
+        if (heightValue < 2.5f) return Vec3f(0.5f, 0.35f, 0.05f);
+        if (heightValue < 4.0f) return Vec3f(0.0f, 0.7f, 0.0f);
+        if (heightValue < 6.0f) return Vec3f(0.5f, 0.5f, 0.5f);
+        return Vec3f(1.0f, 1.0f, 1.0f);
+    };
+
+    // Loop through all points in heightmap
+    for (int z = 0; z <= (int)h; ++z) {
+        for (int x = 0; x <= (int)w; ++x) {
+            float y = heightmap[x][z];
+            vertices.push_back(Vec3f(static_cast<float>(x), y, static_cast<float>(z)));
+            // We fill a placeholder normal for now; we can refine them later (calculateNormalsByArea).
+            normals.push_back(Vec3f(0.0f, 1.0f, 0.0f));
+            // Per-vertex color based on height:
+            Vec3f c = computeColor(y);
+            colors.push_back(c);
+        }
+    }
+
+    // Create triangles: for each cell (x,z) -> two triangles
+    for (int z = 0; z < (int)h; ++z) {
+        for (int x = 0; x < (int)w; ++x) {
+            // Indices in the vertex array:
+            unsigned int i0 = z * (w + 1) + x;
+            unsigned int i1 = i0 + 1;
+            unsigned int i2 = (z + 1) * (w + 1) + x;
+            unsigned int i3 = i2 + 1;
+
+            // Tri 1
+            triangles.emplace_back(i0, i2, i1);
+
+            // Tri 2
+            triangles.emplace_back(i1, i2, i3);
+        }
+    }
+
+    // 6) Now we can recalculate the normals from the new triangles
     calculateNormalsByArea();
+    calculateBB(); // bounding box
+
+    // 7) Upload to GPU
+    createAllVBOs();
+
+    //vertices.reserve(4);
+    //vertices.emplace_back(0, 0, 0);
+    //vertices.emplace_back(0, 0, 10);
+    //vertices.emplace_back(10, 0, 10);
+    //vertices.emplace_back(10, 0, 0);
+
+    //triangles.reserve(2);
+    //triangles.emplace_back(0, 1, 2);
+    //triangles.emplace_back(0, 2, 3);
+
+    //calculateNormalsByArea();
+    //calculateBB();
+    //createAllVBOs();
+}
+
+void TriangleMesh::generateTerrain2(unsigned int /*h*/, unsigned int /*w*/, unsigned int /*iterations*/)
+{
+    // 1) Clear any old data
+    clear();
+
+    // 2) Load from OFF
+    //    NOTE: If the path is different, adjust accordingly!
+    loadOFF("../Models/terrain.off", false);
+    // By default, loadOFF updates vertices, triangles, bounding box, etc.
+
+    // 3) Prepare a “computeColor” lambda that returns color based on y-value
+    auto computeColor = [&](float yValue) -> Vec3f {
+        // Example color thresholds; tune them as you like
+        //  0 - 1.5: water (blue)
+        //  1.5 - 2.5: sand (brownish)
+        //  2.5 - 4.0: grass (green)
+        //  4.0 - 6.0: rock (grey)
+        //  6.0+ : snow (white)
+
+        // You may clamp or scale your yValue if you know the bounding box range
+        yValue = std::clamp(yValue, 0.0f, 10.0f);
+
+        if (yValue < 1.5f)  return Vec3f(0.0f, 0.0f, 1.0f);       // water
+        if (yValue < 2.5f)  return Vec3f(0.5f, 0.35f, 0.05f);     // sand
+        if (yValue < 4.0f)  return Vec3f(0.0f, 0.7f, 0.0f);       // grass
+        if (yValue < 6.0f)  return Vec3f(0.5f, 0.5f, 0.5f);       // rock
+        return Vec3f(1.0f, 1.0f, 1.0f);                           // snow
+    };
+
+    // 4) Create a color entry for each vertex based on its y-value
+    colors.resize(vertices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        float y = vertices[i].y();
+        colors[i] = computeColor(y);
+    }
+
+    // 5) We already have triangles from loadOFF()
+    //    But let's re-check normals in case the file didn't contain them or we want to recalc
+    calculateNormalsByArea();
+
+    // 6) Calculate bounding box (loadOFF may already do this, but just to be sure)
     calculateBB();
+
+    // 7) Upload data to GPU
     createAllVBOs();
 }
+
