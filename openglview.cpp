@@ -119,10 +119,97 @@ void OpenGLView::resizeGL(int width, int height) {
 
 void OpenGLView::drawSkybox() {
     // TODO(3.2): Draw a skybox
-    // prepare (no depth test)
-    // draw skybox
-    // ...
+    
+    //shader configuration and activation
+    GLuint skybox_shaderID = readShaders(f, "../Shader/skybox1.vert", "../Shader/skybox1.frag");
+    if (skybox_shaderID != 0) {
+        state.setCurrentProgram(skybox_shaderID);
+    }
+
+    f->glUniform1i(f->glGetUniformLocation(skybox_shaderID, "skybox"), 0);
+
+    //load cubemap imgs
+    const char* filename[6] = {
+        "../Textures/skybox1/pos_x.bmp",
+        "../Textures/skybox1/neg_x.bmp",
+        "../Textures/skybox1/pos_y.bmp",
+        "../Textures/skybox1/neg_y.bmp",
+        "../Textures/skybox1/pos_z.bmp",
+        "../Textures/skybox1/neg_z.bmp"
+    };
+    
+    GLuint cubemap_texture = loadCubeMap(f, filename);
+
+    // set buffers
+#define SKY_SIZE 10.0f
+    float skyboxVertices[] = {
+        // positions          
+        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+
+        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+
+         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+
+        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+
+        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+
+        -SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+         SKY_SIZE, -SKY_SIZE,  SKY_SIZE
+    };
+    unsigned int skyboxVAO, skyboxVBO;
+    f->glGenVertexArrays(1, &skyboxVAO);
+    f->glGenBuffers(1, &skyboxVBO);
+    f->glBindVertexArray(skyboxVAO);
+    f->glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    f->glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    f->glEnableVertexAttribArray(0);
+    f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+
+    // draw
+    f->glDepthFunc(GL_LEQUAL);
+    f->glUniformMatrix4fv(state.getModelViewUniform(), 1, GL_FALSE, state.getCurrentModelViewMatrix().constData());
+    f->glUniformMatrix4fv(state.getProjectionUniform(), 1, GL_FALSE, state.getCurrentProjectionMatrix().constData());  
+    f->glUniform3f(state.getCameraPositionUniform(), cameraPos.x(), cameraPos.y(), cameraPos.z());
+    
+    f->glBindVertexArray(skyboxVAO);
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture);
+    f->glDrawArrays(GL_TRIANGLES, 0, 36);
+    
     // restore matrix and attributes
+    f->glBindVertexArray(0);
+    f->glDepthFunc(GL_LESS); // set depth function back to default
 }
 
 void OpenGLView::paintGL() {
