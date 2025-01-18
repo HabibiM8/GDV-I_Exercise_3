@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>TU Darmstadt, GDV1, OpenGL Praxisübung 3</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="OpenGLView" name="openGLWidget">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>5</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="baseSize">
+       <size>
+        <width>800</width>
+        <height>600</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="verticalWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>1</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QPushButton" name="resetViewButton">
+         <property name="text">
+          <string>Ansicht zurücksetzen</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="shaderLabel">
+         <property name="text">
+          <string>Aktueller Shader:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="shaderComboBox">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="editable">
+          <bool>false</bool>
+         </property>
+         <property name="currentText">
+          <string/>
+         </property>
+         <property name="currentIndex">
+          <number>-1</number>
+         </property>
+         <property name="minimumContentsLength">
+          <number>2</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="loadNewShaderButton">
+         <property name="text">
+          <string>Neuen Shader laden</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="coloringModeLabel">
+         <property name="text">
+          <string>Farbenmodus</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="coloringModeComboBox">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <item>
+          <property name="text">
+           <string>Color Array</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Texture</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Static Color</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="genTerrainButton">
+         <property name="text">
+          <string>Neues Terrain generieren</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="lightMovementCheckBox">
+         <property name="text">
+          <string>Lichtbewegung</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="diffuseEnableCheckBox">
+         <property name="text">
+          <string>Diffuse Mapping aktiv</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="displacementEnableCheckBox">
+         <property name="text">
+          <string>Displacement Mapping aktiv</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="bumpEnableCheckBox">
+         <property name="text">
+          <string>Bump Mapping aktiv</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="drawBBCheckBox">
+         <property name="text">
+          <string>Bounding Box zeichnen</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="drawNormalCheckBox">
+         <property name="text">
+          <string>Normalen zeichnen</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="gridSizeLabel">
+         <property name="text">
+          <string>Gittergröße</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="gridSizeSpinBox">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>1</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="movementExplanationLabel">
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;h4&gt;Bewegungssteuerung:&lt;/h4&gt;&lt;p&gt;&lt;h5&gt;Tasten WASD:&lt;/h5&gt;&lt;br/&gt;Vorwärts/Rückwärts/Links/Rechts&lt;/p&gt;&lt;p&gt;&lt;h5&gt;Tasten +/-:&lt;/h5&gt;&lt;br/&gt;Geschwindigkeit&lt;/p&gt;&lt;p&gt;&lt;h5&gt;Mausbewegung:&lt;/h5&gt;&lt;br/&gt;Blickrichtung ändern&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="exitButton">
+         <property name="text">
+          <string>Beenden</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OpenGLView</class>
+   <extends>QOpenGLWidget</extends>
+   <header>openglview.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
