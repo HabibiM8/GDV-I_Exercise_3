@@ -30,6 +30,15 @@ void main() {
 		vec3 b = cross(n, t);
 
 		// TODO(3.4): Implement normal mapping.
+
+		// load the normal from texture normal map and scale to [-1, 1]
+		vec3 new_normal = normalize(2.0 * texture(normalTexture, vTexCoord).xyz - 1.0); 
+		
+		// transform from tangent space to view space
+		mat3 transform_mat = transpose(mat3(t, n, b));
+		
+		normal = normalize(transform_mat * new_normal);
+		normal.x = - normal.x;
 	}
 
 	// The lighting is performed in view-space, so the camera is located in the origin.
