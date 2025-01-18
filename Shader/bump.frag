@@ -35,7 +35,7 @@ void main() {
 		vec3 new_normal = normalize(2.0 * texture(normalTexture, vTexCoord).xyz - 1.0); 
 		
 		// transform from tangent space to view space
-		mat3 transform_mat = transpose(mat3(t, b, n));
+		mat3 transform_mat = transpose(mat3(t, n, b));
 		
 		normal = normalize(transform_mat * new_normal);
 		normal.x = - normal.x;
