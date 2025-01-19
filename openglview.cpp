@@ -26,7 +26,7 @@ void OpenGLView::generateRandomPosition(int newObjectCount)
 
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    static std::uniform_real_distribution<float> dist(-10.0f, 10.0f);
+    static std::uniform_real_distribution<float> dist(-5.0f, 5.0f);
 
     for (int i = 0; i < 500; i++)
     {
@@ -161,7 +161,7 @@ void OpenGLView::drawSkybox()
     GLuint cubemap_texture = loadCubeMap(f, filename);
 
     // set buffers
-#define SKY_SIZE 10.0f
+#define SKY_SIZE 20.0f
     float skyboxVertices[] = {
         // positions
         -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
