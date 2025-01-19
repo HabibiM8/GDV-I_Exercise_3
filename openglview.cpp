@@ -21,7 +21,21 @@
 GLuint OpenGLView::csVAO = 0;
 GLuint OpenGLView::csVBOs[2] = {0, 0};
 
-OpenGLView::OpenGLView(QWidget* parent) : QOpenGLWidget(parent) {
+void OpenGLView::generateRandomPosition(int newObjectCount)
+{
+
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_real_distribution<float> dist(-10.0f, 10.0f);
+
+    for (int i = 0; i < 500; i++)
+    {
+        objectPositions.push_back(Vec3f(dist(gen), dist(gen), dist(gen)));
+    }
+}
+
+OpenGLView::OpenGLView(QWidget *parent) : QOpenGLWidget(parent)
+{
     setDefaults();
 
     connect(&fpsCounterTimer, &QTimer::timeout, this, &OpenGLView::refreshFpsCounter);
@@ -38,14 +52,15 @@ void OpenGLView::setGridSize(int gridSize)
 
 void OpenGLView::initializeGL()
 {
+    generateRandomPosition(500);
     f = QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_3_3_Core>(QOpenGLContext::currentContext());
-    const GLubyte* versionString = f->glGetString(GL_VERSION);
+    const GLubyte *versionString = f->glGetString(GL_VERSION);
     std::cout << "The current OpenGL version is: " << versionString << std::endl;
     state.setOpenGLFunctions(f);
 
-    //black screen
+    // black screen
     f->glClearColor(0.f, 0.f, 0.f, 1.f);
-    //enable depth buffer
+    // enable depth buffer
     f->glEnable(GL_DEPTH_TEST);
 
     GLuint testTexture = loadImageIntoTexture(f, "../Textures/TEST_GRID.bmp");
@@ -54,12 +69,12 @@ void OpenGLView::initializeGL()
     GLuint normalTexture = loadImageIntoTexture(f, "../Textures/rough_block_wall_nor_1k.jpg", true);
     GLuint displacementTexture = loadImageIntoTexture(f, "../Textures/rough_block_wall_disp_1k.jpg", true);
 
-    //Load the sphere of the light
+    // Load the sphere of the light
     sphereMesh.setGLFunctionPtr(f);
     sphereMesh.loadOFF("../Models/sphere.off");
     sphereMesh.setStaticColor(Vec3f(1.0f, 1.0f, 0.0f));
 
-    //load meshes
+    // load meshes
     meshes.emplace_back(f);
     meshes[0].loadOFF("../Models/doppeldecker.off");
     meshes[0].setStaticColor(Vec3f(0.0f, 1.0f, 0.0f));
@@ -78,17 +93,19 @@ void OpenGLView::initializeGL()
     bumpSphereMesh.setNormalTexture(normalTexture);
     bumpSphereMesh.setDisplacementTexture(displacementTexture);
 
-    //load coordinate system
+    // load coordinate system
     csVAO = genCSVAO();
 
-    //load shaders
+    // load shaders
     GLuint lightShaderID = readShaders(f, "../Shader/only_mvp.vert", "../Shader/constant_color.frag");
-    if (lightShaderID) {
+    if (lightShaderID)
+    {
         programIDs.push_back(lightShaderID);
         state.setStandardProgram(lightShaderID);
     }
     GLuint shaderID = readShaders(f, "../Shader/only_mvp.vert", "../Shader/lambert.frag");
-    if (shaderID != 0) programIDs.push_back(shaderID);
+    if (shaderID != 0)
+        programIDs.push_back(shaderID);
     currentProgramID = lightShaderID;
 
     bumpProgramID = readShaders(f, "../Shader/bump.vert", "../Shader/bump.frag");
@@ -97,95 +114,97 @@ void OpenGLView::initializeGL()
     emit shaderCompiled(1);
 }
 
-void OpenGLView::resizeGL(int width, int height) {
-    //Calculate new projection matrix
+void OpenGLView::resizeGL(int width, int height)
+{
+    // Calculate new projection matrix
     const float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
     state.loadIdentityProjectionMatrix();
     state.getCurrentProjectionMatrix().perspective(65.f, aspectRatio, 0.5f, 10000.f);
 
-    //set projection matrix in OpenGL shader
+    // set projection matrix in OpenGL shader
     state.switchToStandardProgram();
     f->glUniformMatrix4fv(state.getProjectionUniform(), 1, GL_FALSE, state.getCurrentProjectionMatrix().constData());
     state.setCurrentProgram(bumpProgramID);
     f->glUniformMatrix4fv(state.getProjectionUniform(), 1, GL_FALSE, state.getCurrentProjectionMatrix().constData());
-    for (GLuint progID : programIDs) {
+    for (GLuint progID : programIDs)
+    {
         state.setCurrentProgram(progID);
         f->glUniformMatrix4fv(state.getProjectionUniform(), 1, GL_FALSE, state.getCurrentProjectionMatrix().constData());
     }
 
-    //Resize viewport
+    // Resize viewport
     f->glViewport(0, 0, width, height);
 }
 
-void OpenGLView::drawSkybox() {
+void OpenGLView::drawSkybox()
+{
     // TODO(3.2): Draw a skybox
-    
-    //shader configuration and activation
+
+    // shader configuration and activation
     GLuint skybox_shaderID = readShaders(f, "../Shader/skybox1.vert", "../Shader/skybox1.frag");
-    if (skybox_shaderID != 0) {
+    if (skybox_shaderID != 0)
+    {
         state.setCurrentProgram(skybox_shaderID);
     }
 
     f->glUniform1i(f->glGetUniformLocation(skybox_shaderID, "skybox"), 0);
 
-    //load cubemap imgs
-    const char* filename[6] = {
+    // load cubemap imgs
+    const char *filename[6] = {
         "../Textures/skybox1/pos_x.bmp",
         "../Textures/skybox1/neg_x.bmp",
         "../Textures/skybox1/pos_y.bmp",
         "../Textures/skybox1/neg_y.bmp",
         "../Textures/skybox1/pos_z.bmp",
-        "../Textures/skybox1/neg_z.bmp"
-    };
-    
+        "../Textures/skybox1/neg_z.bmp"};
+
     GLuint cubemap_texture = loadCubeMap(f, filename);
 
     // set buffers
 #define SKY_SIZE 10.0f
     float skyboxVertices[] = {
-        // positions          
-        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        // positions
+        -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
         -SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
 
-        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, SKY_SIZE,
         -SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, SKY_SIZE,
 
-         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
 
-        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
-        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, SKY_SIZE,
 
-        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE,  SKY_SIZE,
-        -SKY_SIZE,  SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, SKY_SIZE,
+        -SKY_SIZE, SKY_SIZE, -SKY_SIZE,
 
         -SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
-        -SKY_SIZE, -SKY_SIZE,  SKY_SIZE,
-         SKY_SIZE, -SKY_SIZE,  SKY_SIZE
-    };
+        -SKY_SIZE, -SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, -SKY_SIZE,
+        -SKY_SIZE, -SKY_SIZE, SKY_SIZE,
+        SKY_SIZE, -SKY_SIZE, SKY_SIZE};
     unsigned int skyboxVAO, skyboxVBO;
     f->glGenVertexArrays(1, &skyboxVAO);
     f->glGenBuffers(1, &skyboxVBO);
@@ -193,30 +212,32 @@ void OpenGLView::drawSkybox() {
     f->glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
     f->glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
     f->glEnableVertexAttribArray(0);
-    f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
+    f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
     // draw
     f->glDepthFunc(GL_LEQUAL);
     f->glUniformMatrix4fv(state.getModelViewUniform(), 1, GL_FALSE, state.getCurrentModelViewMatrix().constData());
-    f->glUniformMatrix4fv(state.getProjectionUniform(), 1, GL_FALSE, state.getCurrentProjectionMatrix().constData());  
+    f->glUniformMatrix4fv(state.getProjectionUniform(), 1, GL_FALSE, state.getCurrentProjectionMatrix().constData());
     f->glUniform3f(state.getCameraPositionUniform(), cameraPos.x(), cameraPos.y(), cameraPos.z());
-    
+
     f->glBindVertexArray(skyboxVAO);
     f->glActiveTexture(GL_TEXTURE0);
     f->glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture);
     f->glDrawArrays(GL_TRIANGLES, 0, 36);
-    
+
     // restore matrix and attributes
     f->glBindVertexArray(0);
     f->glDepthFunc(GL_LESS); // set depth function back to default
 }
 
-void OpenGLView::paintGL() {
+void OpenGLView::paintGL()
+{
+    mesh_culled = 0;
+
     f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     state.loadIdentityModelViewMatrix();
 
-    //translate to center, rotate and render coordinate system and light sphere
+    // translate to center, rotate and render coordinate system and light sphere
     QVector3D cameraLookAt = cameraPos + cameraDir;
     static QVector3D upVector(0.0f, 1.0f, 0.0f);
     state.getCurrentModelViewMatrix().lookAt(cameraPos, cameraLookAt, upVector);
@@ -224,7 +245,8 @@ void OpenGLView::paintGL() {
     state.switchToStandardProgram();
     drawCS();
 
-    if (lightMoves) moveLight();
+    if (lightMoves)
+        moveLight();
 
     drawLight();
 
@@ -239,38 +261,53 @@ void OpenGLView::paintGL() {
 
     state.setCurrentProgram(currentProgramID);
     state.setLightUniform();
-
+    std::cout << "Chck object size" << objectPositions.size() << std::endl;
     // draw objects. count triangles and objects drawn.
     state.pushModelViewMatrix();
-    for (int i = 0; i < gridSize; ++i) {
-        state.getCurrentModelViewMatrix().translate(static_cast<float>(1.f), 0.f);
-        trianglesDrawn += meshes[0].draw(state);
+    for (int i = 0; i < gridSize * 5; ++i)
+    {
+
+        state.getCurrentModelViewMatrix().translate(objectPositions[i][0], objectPositions[i][1], objectPositions[i][2]);
+        // state.getCurrentModelViewMatrix().translate(static_cast<float>(1.f), 0.f);
+        int triangles_check = meshes[0].draw(state);
+        if (triangles_check == 0)
+            mesh_culled++;
+        trianglesDrawn += triangles_check;
+
+        // trianglesDrawn += meshes[0].draw(state);
     }
     state.popModelViewMatrix();
-    for (size_t i = 1; i < meshes.size(); ++i) {
+    for (size_t i = 1; i < meshes.size(); ++i)
+    {
         trianglesDrawn += meshes[i].draw(state);
     }
     // cout number of objects and triangles if different from last run
-    if (trianglesDrawn != trianglesLastRun) {
+    if (trianglesDrawn != trianglesLastRun)
+    {
         trianglesLastRun = trianglesDrawn;
         emit triangleCountChanged(trianglesDrawn);
     }
+    mesh_drawn = gridSize * 5 - mesh_culled;
+    std::cout << "Number of Objects Culled: " << mesh_culled << std::endl;
+    std::cout << "Number of Objects Drawn: " << mesh_drawn << std::endl;
 
     frameCounter++;
     update();
 }
 
-void OpenGLView::drawCS() {
+void OpenGLView::drawCS()
+{
     f->glUniformMatrix4fv(state.getModelViewUniform(), 1, GL_FALSE, state.getCurrentModelViewMatrix().constData());
     f->glBindVertexArray(csVAO);
     f->glDrawArrays(GL_LINES, 0, 6);
     f->glBindVertexArray(GL_NONE);
 }
 
-void OpenGLView::drawLight() {
+void OpenGLView::drawLight()
+{
     // draw yellow sphere for light source
     state.pushModelViewMatrix();
-    Vec3f& lp = state.getLightPos();
+    Vec3f &lp = state.getLightPos();
     state.getCurrentModelViewMatrix().translate(lp.x(), lp.y(), lp.z());
     sphereMesh.draw(state);
     state.popModelViewMatrix();
@@ -288,7 +325,8 @@ unsigned int OpenGLView::getTriangleCount() const
     return result;
 }
 
-void OpenGLView::setDefaults() {
+void OpenGLView::setDefaults()
+{
     // scene Information
     cameraPos = QVector3D(0.0f, 0.0f, -3.0f);
     cameraDir = QVector3D(0.f, 0.f, -1.f);
@@ -316,10 +354,14 @@ void OpenGLView::refreshFpsCounter()
 void OpenGLView::triggerLightMovement(bool shouldMove)
 {
     lightMoves = shouldMove;
-    if (lightMoves) {
-        if (deltaTimer.isValid()) {
+    if (lightMoves)
+    {
+        if (deltaTimer.isValid())
+        {
             deltaTimer.restart();
-        } else {
+        }
+        else
+        {
             deltaTimer.start();
         }
     }
@@ -327,7 +369,7 @@ void OpenGLView::triggerLightMovement(bool shouldMove)
 
 void OpenGLView::cameraMoves(float deltaX, float deltaY, float deltaZ)
 {
-    QVector3D ortho(-cameraDir.z(),0.0f,cameraDir.x());
+    QVector3D ortho(-cameraDir.z(), 0.0f, cameraDir.x());
     QVector3D up = QVector3D::crossProduct(cameraDir, ortho).normalized();
 
     cameraPos += deltaX * ortho;
@@ -347,25 +389,32 @@ void OpenGLView::cameraRotates(float deltaX, float deltaY)
     cameraDir.setZ(-std::cos(angleX * M_RadToDeg) * std::cos(angleY * M_RadToDeg));
     cameraDir.setY(std::max(0.0f, std::min(std::sqrt(1.0f - cameraDir.x() * cameraDir.x() - cameraDir.z() * cameraDir.z()), 1.0f)));
 
-    if (angleY < 0.f) cameraDir.setY(-cameraDir.y());
+    if (angleY < 0.f)
+        cameraDir.setY(-cameraDir.y());
 
     update();
 }
 
-void OpenGLView::changeShader(unsigned int index) {
+void OpenGLView::changeShader(unsigned int index)
+{
     makeCurrent();
-    try {
+    try
+    {
         GLuint progID = programIDs.at(index);
         currentProgramID = progID;
-    } catch (std::out_of_range& ex) {
+    }
+    catch (std::out_of_range &ex)
+    {
         qFatal("Tried to access shader index that has not been loaded! %s", ex.what());
     }
     doneCurrent();
 }
 
-void OpenGLView::compileShader(const QString& vertexShaderPath, const QString& fragmentShaderPath) {
+void OpenGLView::compileShader(const QString &vertexShaderPath, const QString &fragmentShaderPath)
+{
     GLuint programHandle = readShaders(f, vertexShaderPath, fragmentShaderPath);
-    if (programHandle) {
+    if (programHandle)
+    {
         programIDs.push_back(programHandle);
         emit shaderCompiled(programIDs.size() - 1);
     }
@@ -373,18 +422,21 @@ void OpenGLView::compileShader(const QString& vertexShaderPath, const QString& f
 
 void OpenGLView::changeColoringMode(TriangleMesh::ColoringType type)
 {
-    for (auto& mesh: meshes) mesh.setColoringMode(type);
+    for (auto &mesh : meshes)
+        mesh.setColoringMode(type);
 }
 
 void OpenGLView::toggleBoundingBox(bool enable)
 {
-    for (auto& mesh: meshes) mesh.toggleBB(enable);
+    for (auto &mesh : meshes)
+        mesh.toggleBB(enable);
     bumpSphereMesh.toggleBB(enable);
 }
 
 void OpenGLView::toggleNormals(bool enable)
 {
-    for (auto& mesh: meshes) mesh.toggleNormals(enable);
+    for (auto &mesh : meshes)
+        mesh.toggleNormals(enable);
     bumpSphereMesh.toggleNormals(enable);
 }
 
@@ -412,7 +464,8 @@ void OpenGLView::recreateTerrain()
 }
 
 // This creates a VAO that represents the coordinate system
-GLuint OpenGLView::genCSVAO() {
+GLuint OpenGLView::genCSVAO()
+{
     GLuint VAOresult;
     f->glGenVertexArrays(1, &VAOresult);
     f->glGenBuffers(2, csVBOs);
@@ -420,24 +473,48 @@ GLuint OpenGLView::genCSVAO() {
     f->glBindVertexArray(VAOresult);
     f->glBindBuffer(GL_ARRAY_BUFFER, csVBOs[0]);
     const static float vertices[] = {
-            0.f, 0.f, 0.f,
-            5.f, 0.f, 0.f,
-            0.f, 0.f, 0.f,
-            0.f, 5.f, 0.f,
-            0.f, 0.f, 0.f,
-            0.f, 0.f, 5.f,
+        0.f,
+        0.f,
+        0.f,
+        5.f,
+        0.f,
+        0.f,
+        0.f,
+        0.f,
+        0.f,
+        0.f,
+        5.f,
+        0.f,
+        0.f,
+        0.f,
+        0.f,
+        0.f,
+        0.f,
+        5.f,
     };
     f->glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     f->glVertexAttribPointer(POSITION_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     f->glEnableVertexAttribArray(POSITION_LOCATION);
     f->glBindBuffer(GL_ARRAY_BUFFER, csVBOs[1]);
     const static float colors[] = {
-            1.f, 0.f, 0.f,
-            1.f, 0.f, 0.f,
-            0.f, 1.f, 0.f,
-            0.f, 1.f, 0.f,
-            0.f, 0.f, 1.f,
-            0.f, 0.f, 1.f,
+        1.f,
+        0.f,
+        0.f,
+        1.f,
+        0.f,
+        0.f,
+        0.f,
+        1.f,
+        0.f,
+        0.f,
+        1.f,
+        0.f,
+        0.f,
+        0.f,
+        1.f,
+        0.f,
+        0.f,
+        1.f,
     };
     f->glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
     f->glVertexAttribPointer(COLOR_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);

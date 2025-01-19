@@ -32,21 +32,23 @@
 #include "clipplane.h"
 #include "shader.h"
 
-using glVertexAttrib3fvPtr = void (*)(GLuint index, const GLfloat* v);
+using glVertexAttrib3fvPtr = void (*)(GLuint index, const GLfloat *v);
 using glVertexAttrib3fPtr = void (*)(GLuint index, GLfloat v1, GLfloat v2, GLfloat v3);
 
-TriangleMesh::TriangleMesh(QOpenGLFunctions_3_3_Core* f)
+TriangleMesh::TriangleMesh(QOpenGLFunctions_3_3_Core *f)
     : staticColor(1.f, 1.f, 1.f), f(f)
 {
     clear();
 }
 
-TriangleMesh::~TriangleMesh() {
+TriangleMesh::~TriangleMesh()
+{
     // clear data
     clear();
 }
 
-void TriangleMesh::clear() {
+void TriangleMesh::clear()
+{
     // clear mesh data
     vertices.clear();
     triangles.clear();
@@ -66,7 +68,8 @@ void TriangleMesh::clear() {
     cleanupVBO();
 }
 
-void TriangleMesh::coutData() {
+void TriangleMesh::coutData()
+{
     std::cout << std::endl;
     std::cout << "=== MESH DATA ===" << std::endl;
     std::cout << "nr. triangles: " << triangles.size() << std::endl;
@@ -79,20 +82,21 @@ void TriangleMesh::coutData() {
     std::cout << "  BBSize: (" << boundingBoxSize << ")" << std::endl;
     std::cout << "  VAO ID: " << VAO() << ", VBO IDs: f=" << VBOf() << ", v=" << VBOv() << ", n=" << VBOn() << ", c=" << VBOc() << ", t=" << VBOt() << std::endl;
     std::cout << "coloring using: ";
-    switch (coloringType) {
-        case ColoringType::STATIC_COLOR:
-            std::cout << "a static color" << std::endl;
-            break;
-        case ColoringType::COLOR_ARRAY:
-            std::cout << "a color array" << std::endl;
-            break;
-        case ColoringType::TEXTURE:
-            std::cout << "a texture" << std::endl;
-            break;
+    switch (coloringType)
+    {
+    case ColoringType::STATIC_COLOR:
+        std::cout << "a static color" << std::endl;
+        break;
+    case ColoringType::COLOR_ARRAY:
+        std::cout << "a color array" << std::endl;
+        break;
+    case ColoringType::TEXTURE:
+        std::cout << "a texture" << std::endl;
+        break;
 
-        case ColoringType::BUMP_MAPPING:
-            std::cout << "a bump map" << std::endl;
-            break;
+    case ColoringType::BUMP_MAPPING:
+        std::cout << "a bump map" << std::endl;
+        break;
     }
 }
 
@@ -100,40 +104,50 @@ void TriangleMesh::coutData() {
 // === RAW DATA ===
 // ================
 
-void TriangleMesh::flipNormals(bool createVBOs) {
-    for (auto& n : normals) n *= -1.0f;
-    //correct VBO
-    if (createVBOs && VBOn() != 0) {
-        if (!f) return;
+void TriangleMesh::flipNormals(bool createVBOs)
+{
+    for (auto &n : normals)
+        n *= -1.0f;
+    // correct VBO
+    if (createVBOs && VBOn() != 0)
+    {
+        if (!f)
+            return;
         f->glBindBuffer(GL_ARRAY_BUFFER, VBOn());
         f->glBufferSubData(GL_ARRAY_BUFFER, 0, normals.size() * sizeof(Normal), normals.data());
         f->glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 }
 
-void TriangleMesh::translateToCenter(const Vec3f& newBBmid, bool createVBOs) {
+void TriangleMesh::translateToCenter(const Vec3f &newBBmid, bool createVBOs)
+{
     Vec3f trans = newBBmid - boundingBoxMid;
-    for (auto& vertex : vertices) vertex += trans;
+    for (auto &vertex : vertices)
+        vertex += trans;
     boundingBoxMin += trans;
     boundingBoxMax += trans;
     boundingBoxMid += trans;
     // data changed => delete VBOs and create new ones (not efficient but easy)
-    if (createVBOs) {
+    if (createVBOs)
+    {
         cleanupVBO();
         createAllVBOs();
     }
 }
 
-void TriangleMesh::scaleToLength(const float newLength, bool createVBOs) {
+void TriangleMesh::scaleToLength(const float newLength, bool createVBOs)
+{
     float length = std::max(std::max(boundingBoxSize.x(), boundingBoxSize.y()), boundingBoxSize.z());
     float scale = newLength / length;
-    for (auto& vertex : vertices) vertex *= scale;
+    for (auto &vertex : vertices)
+        vertex *= scale;
     boundingBoxMin *= scale;
     boundingBoxMax *= scale;
     boundingBoxMid *= scale;
     boundingBoxSize *= scale;
     // data changed => delete VBOs and create new ones (not efficient but easy)
-    if (createVBOs) {
+    if (createVBOs)
+    {
         cleanupVBO();
         createAllVBOs();
     }
@@ -143,12 +157,14 @@ void TriangleMesh::scaleToLength(const float newLength, bool createVBOs) {
 // === LOAD MESH ===
 // =================
 
-void TriangleMesh::loadOFF(const char* filename, bool createVBOs) {
+void TriangleMesh::loadOFF(const char *filename, bool createVBOs)
+{
     // clear any existing mesh
     clear();
     // load from off
     std::ifstream in(filename);
-    if (!in.is_open()) {
+    if (!in.is_open())
+    {
         std::cout << "loadOFF: can not find " << filename << std::endl;
         return;
     }
@@ -164,14 +180,16 @@ void TriangleMesh::loadOFF(const char* filename, bool createVBOs) {
     else
         return;
     // get number of vertices nv, faces nf and edges ne
-    int nv,nf,ne;
+    int nv, nf, ne;
     in >> std::setw(MAX) >> nv;
     in >> std::setw(MAX) >> nf;
     in >> std::setw(MAX) >> ne;
-    if (nv <= 0 || nf <= 0) return;
+    if (nv <= 0 || nf <= 0)
+        return;
     // read vertices
     vertices.resize(nv);
-    for (int i = 0; i < nv; ++i) {
+    for (int i = 0; i < nv; ++i)
+    {
         in >> std::setw(MAX) >> vertices[i][0];
         in >> std::setw(MAX) >> vertices[i][1];
         in >> std::setw(MAX) >> vertices[i][2];
@@ -181,17 +199,19 @@ void TriangleMesh::loadOFF(const char* filename, bool createVBOs) {
         boundingBoxMax[0] = std::max(vertices[i][0], boundingBoxMax[0]);
         boundingBoxMax[1] = std::max(vertices[i][1], boundingBoxMax[1]);
         boundingBoxMax[2] = std::max(vertices[i][2], boundingBoxMax[2]);
-        if (noff) {
+        if (noff)
+        {
             in >> std::setw(MAX) >> normals[i][0];
             in >> std::setw(MAX) >> normals[i][1];
             in >> std::setw(MAX) >> normals[i][2];
         }
     }
-    boundingBoxMid = 0.5f*boundingBoxMin + 0.5f*boundingBoxMax;
+    boundingBoxMid = 0.5f * boundingBoxMin + 0.5f * boundingBoxMax;
     boundingBoxSize = boundingBoxMax - boundingBoxMin;
     // read triangles
     triangles.resize(nf);
-    for (int i = 0; i < nf; ++i) {
+    for (int i = 0; i < nf; ++i)
+    {
         int three;
         in >> std::setw(MAX) >> three;
         in >> std::setw(MAX) >> triangles[i][0];
@@ -201,25 +221,30 @@ void TriangleMesh::loadOFF(const char* filename, bool createVBOs) {
     // close ifstream
     in.close();
     // calculate normals if not given
-    if (!noff) calculateNormalsByArea();
+    if (!noff)
+        calculateNormalsByArea();
     // calculate texture coordinates
     calculateTexCoordsSphereMapping();
     // createVBO
-    if (createVBOs) {
+    if (createVBOs)
+    {
         createAllVBOs();
     }
 }
 
-void TriangleMesh::loadOFF(const char* filename, const Vec3f& BBmid, const float BBlength) {
+void TriangleMesh::loadOFF(const char *filename, const Vec3f &BBmid, const float BBlength)
+{
     loadOFF(filename, false);
     translateToCenter(BBmid, false);
     scaleToLength(BBlength, true);
 }
 
-void TriangleMesh::calculateNormalsByArea() {
+void TriangleMesh::calculateNormalsByArea()
+{
     // sum up triangle normals in each vertex
     normals.resize(vertices.size());
-    for (auto& triangle : triangles) {
+    for (auto &triangle : triangles)
+    {
         unsigned int
             id0 = triangle[0],
             id1 = triangle[1],
@@ -233,30 +258,34 @@ void TriangleMesh::calculateNormalsByArea() {
         normals[id2] += normal;
     }
     // normalize normals
-    for (auto& normal : normals) normal.normalize();
+    for (auto &normal : normals)
+        normal.normalize();
 }
 
-void TriangleMesh::calculateTexCoordsSphereMapping() {
+void TriangleMesh::calculateTexCoordsSphereMapping()
+{
     texCoords.clear();
     // texCoords by central projection on unit sphere
     // optional ...
-    for (const auto& vertex : vertices) {
+    for (const auto &vertex : vertices)
+    {
         const auto dist = vertex - boundingBoxMid;
         float u = (M_1_PI / 2) * std::atan2(dist.x(), dist.z()) + 0.5;
         float v = M_1_PI * std::asin(dist.y() / std::sqrt(dist.x() * dist.x() + dist.y() * dist.y() + dist.z() * dist.z()));
-        texCoords.push_back(TexCoord{ u, v });
+        texCoords.push_back(TexCoord{u, v});
     }
-
 }
 
-void TriangleMesh::calculateBB() {
+void TriangleMesh::calculateBB()
+{
     // clear bounding box data
     boundingBoxMin = Vec3f(FLT_MAX, FLT_MAX, FLT_MAX);
     boundingBoxMax = Vec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX);
     boundingBoxMid.zero();
     boundingBoxSize.zero();
     // iterate over vertices
-    for (auto& vertex : vertices) {
+    for (auto &vertex : vertices)
+    {
         boundingBoxMin[0] = std::min(vertex[0], boundingBoxMin[0]);
         boundingBoxMin[1] = std::min(vertex[1], boundingBoxMin[1]);
         boundingBoxMin[2] = std::min(vertex[2], boundingBoxMin[2]);
@@ -264,11 +293,12 @@ void TriangleMesh::calculateBB() {
         boundingBoxMax[1] = std::max(vertex[1], boundingBoxMax[1]);
         boundingBoxMax[2] = std::max(vertex[2], boundingBoxMax[2]);
     }
-    boundingBoxMid = 0.5f*boundingBoxMin + 0.5f*boundingBoxMax;
+    boundingBoxMid = 0.5f * boundingBoxMin + 0.5f * boundingBoxMax;
     boundingBoxSize = boundingBoxMax - boundingBoxMin;
 }
 
-GLuint TriangleMesh::createVBO(QOpenGLFunctions_3_3_Core* f, const void* data, int dataSize, GLenum target, GLenum usage) {
+GLuint TriangleMesh::createVBO(QOpenGLFunctions_3_3_Core *f, const void *data, int dataSize, GLenum target, GLenum usage)
+{
 
     // 0 is reserved, glGenBuffers() will return non-zero id if success
     GLuint id = 0;
@@ -281,7 +311,8 @@ GLuint TriangleMesh::createVBO(QOpenGLFunctions_3_3_Core* f, const void* data, i
     // check data size in VBO is same as input array, if not return 0 and delete VBO
     int bufferSize = 0;
     f->glGetBufferParameteriv(target, GL_BUFFER_SIZE, &bufferSize);
-    if(dataSize != bufferSize) {
+    if (dataSize != bufferSize)
+    {
         f->glDeleteBuffers(1, &id);
         id = 0;
         std::cout << "createVBO() ERROR: Data size (" << dataSize << ") is mismatch with input array (" << bufferSize << ")." << std::endl;
@@ -291,7 +322,8 @@ GLuint TriangleMesh::createVBO(QOpenGLFunctions_3_3_Core* f, const void* data, i
     return id;
 }
 
-void TriangleMesh::createBBVAO(QOpenGLFunctions_3_3_Core* f) {
+void TriangleMesh::createBBVAO(QOpenGLFunctions_3_3_Core *f)
+{
     f->glGenVertexArrays(1, &VAObb.val);
 
     // create VBOs of bounding box
@@ -310,11 +342,14 @@ void TriangleMesh::createBBVAO(QOpenGLFunctions_3_3_Core* f) {
     f->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void TriangleMesh::createNormalVAO(QOpenGLFunctions_3_3_Core* f) {
-    if (vertices.size() != normals.size()) return;
+void TriangleMesh::createNormalVAO(QOpenGLFunctions_3_3_Core *f)
+{
+    if (vertices.size() != normals.size())
+        return;
     std::vector<Vec3f> normalArrowVertices;
     normalArrowVertices.reserve(2 * vertices.size());
-    for (size_t i = 0; i < vertices.size(); ++i) {
+    for (size_t i = 0; i < vertices.size(); ++i)
+    {
         normalArrowVertices.push_back(vertices[i]);
         normalArrowVertices.push_back(vertices[i] + 0.1 * normals[i]);
     }
@@ -329,8 +364,10 @@ void TriangleMesh::createNormalVAO(QOpenGLFunctions_3_3_Core* f) {
     f->glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void TriangleMesh::createAllVBOs() {
-    if (!f) return;
+void TriangleMesh::createAllVBOs()
+{
+    if (!f)
+        return;
     // create VAOs
     f->glGenVertexArrays(1, &VAO.val);
 
@@ -338,17 +375,20 @@ void TriangleMesh::createAllVBOs() {
     VBOf.val = createVBO(f, triangles.data(), triangles.size() * sizeof(Triangle), GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW);
     VBOv.val = createVBO(f, vertices.data(), vertices.size() * sizeof(Vertex), GL_ARRAY_BUFFER, GL_STATIC_DRAW);
     VBOn.val = createVBO(f, normals.data(), normals.size() * sizeof(Normal), GL_ARRAY_BUFFER, GL_STATIC_DRAW);
-    if (colors.size() == vertices.size()) {
+    if (colors.size() == vertices.size())
+    {
         VBOc.val = createVBO(f, colors.data(), colors.size() * sizeof(Color), GL_ARRAY_BUFFER, GL_STATIC_DRAW);
         f->glEnableVertexAttribArray(COLOR_LOCATION);
     }
-    if (texCoords.size() == vertices.size()) {
+    if (texCoords.size() == vertices.size())
+    {
         VBOt.val = createVBO(f, texCoords.data(), texCoords.size() * sizeof(TexCoord), GL_ARRAY_BUFFER, GL_STATIC_DRAW);
         f->glEnableVertexAttribArray(TEXCOORD_LOCATION);
     }
-    if (tangents.size() == vertices.size()) {
+    if (tangents.size() == vertices.size())
+    {
         VBOtan.val = createVBO(f, tangents.data(), tangents.size() * sizeof(Tangent), GL_ARRAY_BUFFER, GL_STATIC_DRAW);
-        f->glEnableVertexAttribArray(TANGENT_LOCATION);   
+        f->glEnableVertexAttribArray(TANGENT_LOCATION);
     }
 
     // bind VBOs to VAO object
@@ -360,21 +400,24 @@ void TriangleMesh::createAllVBOs() {
     f->glBindBuffer(GL_ARRAY_BUFFER, VBOn.val);
     f->glVertexAttribPointer(NORMAL_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     f->glEnableVertexAttribArray(NORMAL_LOCATION);
-    if (VBOc.val) {
+    if (VBOc.val)
+    {
         f->glBindBuffer(GL_ARRAY_BUFFER, VBOc.val);
         f->glVertexAttribPointer(COLOR_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
         f->glEnableVertexAttribArray(COLOR_LOCATION);
     }
 
-    if (VBOt.val) {
+    if (VBOt.val)
+    {
         f->glBindBuffer(GL_ARRAY_BUFFER, VBOt.val);
         f->glVertexAttribPointer(TEXCOORD_LOCATION, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
         f->glEnableVertexAttribArray(TEXCOORD_LOCATION);
     }
-    if (VBOtan.val) {
+    if (VBOtan.val)
+    {
         f->glBindBuffer(GL_ARRAY_BUFFER, VBOtan.val);
         f->glVertexAttribPointer(TANGENT_LOCATION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-        f->glEnableVertexAttribArray(TANGENT_LOCATION);   
+        f->glEnableVertexAttribArray(TANGENT_LOCATION);
     }
 
     f->glBindVertexArray(0);
@@ -384,26 +427,41 @@ void TriangleMesh::createAllVBOs() {
     createNormalVAO(f);
 }
 
-void TriangleMesh::cleanupVBO() {
-    if (!f) return;
+void TriangleMesh::cleanupVBO()
+{
+    if (!f)
+        return;
     cleanupVBO(f);
 }
 
-void TriangleMesh::cleanupVBO(QOpenGLFunctions_3_3_Core* f) {
+void TriangleMesh::cleanupVBO(QOpenGLFunctions_3_3_Core *f)
+{
     // delete VAO
-    if (VAO.val != 0) f->glDeleteVertexArrays(1, &VAO.val);
+    if (VAO.val != 0)
+        f->glDeleteVertexArrays(1, &VAO.val);
     // delete VBO
-    if (VBOv.val != 0) f->glDeleteBuffers(1, &VBOv.val);
-    if (VBOn.val != 0) f->glDeleteBuffers(1, &VBOn.val);
-    if (VBOf.val != 0) f->glDeleteBuffers(1, &VBOf.val);
-    if (VBOc.val != 0) f->glDeleteBuffers(1, &VBOc.val);
-    if (VBOt.val != 0) f->glDeleteBuffers(1, &VBOt.val);
-    if (VBOtan.val != 0) f->glDeleteBuffers(1, &VBOtan.val);
-    if (VAObb.val != 0) f->glDeleteVertexArrays(1, &VAObb.val);
-    if (VBOvbb.val != 0) f->glDeleteBuffers(1, &VBOvbb.val);
-    if (VBOfbb.val != 0) f->glDeleteBuffers(1, &VBOfbb.val);
-    if (VAOn.val != 0) f->glDeleteVertexArrays(1, &VAOn.val);
-    if (VBOvn.val != 0) f->glDeleteBuffers(1, &VBOvn.val);
+    if (VBOv.val != 0)
+        f->glDeleteBuffers(1, &VBOv.val);
+    if (VBOn.val != 0)
+        f->glDeleteBuffers(1, &VBOn.val);
+    if (VBOf.val != 0)
+        f->glDeleteBuffers(1, &VBOf.val);
+    if (VBOc.val != 0)
+        f->glDeleteBuffers(1, &VBOc.val);
+    if (VBOt.val != 0)
+        f->glDeleteBuffers(1, &VBOt.val);
+    if (VBOtan.val != 0)
+        f->glDeleteBuffers(1, &VBOtan.val);
+    if (VAObb.val != 0)
+        f->glDeleteVertexArrays(1, &VAObb.val);
+    if (VBOvbb.val != 0)
+        f->glDeleteBuffers(1, &VBOvbb.val);
+    if (VBOfbb.val != 0)
+        f->glDeleteBuffers(1, &VBOfbb.val);
+    if (VAOn.val != 0)
+        f->glDeleteVertexArrays(1, &VAOn.val);
+    if (VBOvn.val != 0)
+        f->glDeleteBuffers(1, &VBOvn.val);
     VBOv.val = 0;
     VBOn.val = 0;
     VBOf.val = 0;
@@ -418,14 +476,20 @@ void TriangleMesh::cleanupVBO(QOpenGLFunctions_3_3_Core* f) {
     VBOvn.val = 0;
 }
 
-unsigned int TriangleMesh::draw(RenderState& state) {
-    if (!boundingBoxIsVisible(state)) return 0;
-    if (VAO.val == 0) return 0;
-    if (withBB || withNormals) {
+unsigned int TriangleMesh::draw(RenderState &state)
+{
+    if (!boundingBoxIsVisible(state))
+        return 0;
+    if (VAO.val == 0)
+        return 0;
+    if (withBB || withNormals)
+    {
         GLuint formerProgram = state.getCurrentProgram();
         state.switchToStandardProgram();
-        if (withBB) drawBB(state);
-        if (withNormals) drawNormals(state);
+        if (withBB)
+            drawBB(state);
+        if (withNormals)
+            drawNormals(state);
         state.setCurrentProgram(formerProgram);
     }
     drawVBO(state);
@@ -433,102 +497,177 @@ unsigned int TriangleMesh::draw(RenderState& state) {
     return triangles.size();
 }
 
-void TriangleMesh::drawVBO(RenderState& state) {
-    auto* f = state.getOpenGLFunctions();
+void TriangleMesh::drawVBO(RenderState &state)
+{
+    auto *f = state.getOpenGLFunctions();
 
-    //Bug in Qt: They flagged glVertexAttrib3f as deprecated in modern OpenGL, which is not true.
-    //We have to load it manually. Make it static so we do it only once.
+    // Bug in Qt: They flagged glVertexAttrib3f as deprecated in modern OpenGL, which is not true.
+    // We have to load it manually. Make it static so we do it only once.
     static auto glVertexAttrib3fv = reinterpret_cast<glVertexAttrib3fvPtr>(QOpenGLContext::currentContext()->getProcAddress("glVertexAttrib3fv"));
-    
+
     // The VAO keeps track of all the buffers and the element buffer, so we do not need to bind else except for the VAO
     f->glBindVertexArray(VAO.val);
     f->glUniformMatrix4fv(state.getModelViewUniform(), 1, GL_FALSE, state.getCurrentModelViewMatrix().data());
     f->glUniformMatrix3fv(state.getNormalMatrixUniform(), 1, GL_FALSE, state.calculateNormalMatrix().data());
-    switch (coloringType) {
-        case ColoringType::TEXTURE:
-            if (textureID.val != 0) {
-                f->glUniform1ui(state.getUseTextureUniform(), GL_TRUE);
-                f->glActiveTexture(GL_TEXTURE0);
-                f->glBindTexture(GL_TEXTURE_2D, textureID.val);
-                f->glUniform1i(state.getTextureUniform(), 0);
-                break;
-            }
-            //[[fallthrough]];
-
-        case ColoringType::COLOR_ARRAY:
-            if (VBOc.val != 0) {
-                f->glUniform1ui(state.getUseTextureUniform(), GL_FALSE);
-                f->glEnableVertexAttribArray(COLOR_LOCATION);
-                break;
-            }
-            //[[fallthrough]];
-
-        case ColoringType::STATIC_COLOR:
-            f->glUniform1ui(state.getUseTextureUniform(), GL_FALSE);
-            f->glDisableVertexAttribArray(COLOR_LOCATION); //By disabling the attribute array, it uses the value set in the following line.
-            glVertexAttrib3fv(2, reinterpret_cast<const GLfloat*>(&staticColor));
-            break;
-
-        case ColoringType::BUMP_MAPPING:
-            // Use static color as base color.
-            f->glDisableVertexAttribArray(COLOR_LOCATION);
-            glVertexAttrib3fv(2, reinterpret_cast<const GLfloat*>(&staticColor));
-
-            GLint location;
-            auto program = state.getCurrentProgram();
-
-            location = f->glGetUniformLocation(program, "useDiffuse");
-            f->glUniform1ui(location, enableDiffuseTexture);
-
-            location = f->glGetUniformLocation(program, "useNormal");
-            f->glUniform1ui(location, enableNormalMapping);
-
-            location = f->glGetUniformLocation(program, "useDisplacement");
-            f->glUniform1ui(location, enableDisplacementMapping);
-
-            location = f->glGetUniformLocation(program, "diffuseTexture");
-            f->glUniform1i(location, 0);
+    switch (coloringType)
+    {
+    case ColoringType::TEXTURE:
+        if (textureID.val != 0)
+        {
+            f->glUniform1ui(state.getUseTextureUniform(), GL_TRUE);
             f->glActiveTexture(GL_TEXTURE0);
             f->glBindTexture(GL_TEXTURE_2D, textureID.val);
-
-            location = f->glGetUniformLocation(program, "normalTexture");
-            f->glUniform1i(location, 1);
-            f->glActiveTexture(GL_TEXTURE1);
-            f->glBindTexture(GL_TEXTURE_2D, normalMapID.val);
-
-            location = f->glGetUniformLocation(program, "displacementTexture");
-            f->glUniform1i(location, 3);
-            f->glActiveTexture(GL_TEXTURE3);
-            f->glBindTexture(GL_TEXTURE_2D, displacementMapID.val);
+            f->glUniform1i(state.getTextureUniform(), 0);
             break;
+        }
+        //[[fallthrough]];
+
+    case ColoringType::COLOR_ARRAY:
+        if (VBOc.val != 0)
+        {
+            f->glUniform1ui(state.getUseTextureUniform(), GL_FALSE);
+            f->glEnableVertexAttribArray(COLOR_LOCATION);
+            break;
+        }
+        //[[fallthrough]];
+
+    case ColoringType::STATIC_COLOR:
+        f->glUniform1ui(state.getUseTextureUniform(), GL_FALSE);
+        f->glDisableVertexAttribArray(COLOR_LOCATION); // By disabling the attribute array, it uses the value set in the following line.
+        glVertexAttrib3fv(2, reinterpret_cast<const GLfloat *>(&staticColor));
+        break;
+
+    case ColoringType::BUMP_MAPPING:
+        // Use static color as base color.
+        f->glDisableVertexAttribArray(COLOR_LOCATION);
+        glVertexAttrib3fv(2, reinterpret_cast<const GLfloat *>(&staticColor));
+
+        GLint location;
+        auto program = state.getCurrentProgram();
+
+        location = f->glGetUniformLocation(program, "useDiffuse");
+        f->glUniform1ui(location, enableDiffuseTexture);
+
+        location = f->glGetUniformLocation(program, "useNormal");
+        f->glUniform1ui(location, enableNormalMapping);
+
+        location = f->glGetUniformLocation(program, "useDisplacement");
+        f->glUniform1ui(location, enableDisplacementMapping);
+
+        location = f->glGetUniformLocation(program, "diffuseTexture");
+        f->glUniform1i(location, 0);
+        f->glActiveTexture(GL_TEXTURE0);
+        f->glBindTexture(GL_TEXTURE_2D, textureID.val);
+
+        location = f->glGetUniformLocation(program, "normalTexture");
+        f->glUniform1i(location, 1);
+        f->glActiveTexture(GL_TEXTURE1);
+        f->glBindTexture(GL_TEXTURE_2D, normalMapID.val);
+
+        location = f->glGetUniformLocation(program, "displacementTexture");
+        f->glUniform1i(location, 3);
+        f->glActiveTexture(GL_TEXTURE3);
+        f->glBindTexture(GL_TEXTURE_2D, displacementMapID.val);
+        break;
     }
-    f->glDrawElements(GL_TRIANGLES, 3*triangles.size(), GL_UNSIGNED_INT, nullptr);
+    f->glDrawElements(GL_TRIANGLES, 3 * triangles.size(), GL_UNSIGNED_INT, nullptr);
 }
 
 // ===========
 // === VFC ===
 // ===========
 
-bool TriangleMesh::boundingBoxIsVisible(const RenderState& state) {
-    // TODO(3.3): Implement view frustum culling.
-    return true;
+bool TriangleMesh::boundingBoxIsVisible(const RenderState &state)
+{
+
+    QMatrix4x4 mvMatrix = state.getCurrentModelViewMatrix();
+    QMatrix4x4 projMatrix = state.getCurrentProjectionMatrix();
+    QMatrix4x4 clipMatrix = projMatrix * mvMatrix;
+
+    struct Plane
+    {
+        float a, b, c, d;
+        void normalize()
+        {
+            float length = std::sqrt(a * a + b * b + c * c);
+            a /= length;
+            b /= length;
+            c /= length;
+            d /= length;
+        }
+    };
+
+    Plane planes[6];
+    const float *m = clipMatrix.data();
+    planes[0] = {m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]};
+    planes[1] = {m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12]};
+    planes[2] = {m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13]};
+    planes[3] = {m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13]};
+    planes[4] = {m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]};
+    planes[5] = {m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]};
+
+    // Normalize all planes
+    for (auto &plane : planes)
+    {
+        plane.normalize();
+    }
+
+    // for (int i = 0; i < 6; ++i)
+    // {
+    //     // planes[i].normalize();
+    //     planes[i] = {-planes[i].a, -planes[i].b, -planes[i].c, -planes[i].d}; // Flip the normal direction
+    // }
+
+    Vec3f minVec = getBoundingBoxMin();
+    Vec3f maxVec = getBoundingBoxMax();
+
+    QVector3D min(minVec.x(), minVec.y(), minVec.z());
+    QVector3D max(maxVec.x(), maxVec.y(), maxVec.z());
+
+    QVector3D corners[8] = {
+        {min.x(), min.y(), min.z()}, {max.x(), min.y(), min.z()}, {min.x(), max.y(), min.z()}, {max.x(), max.y(), min.z()}, {min.x(), min.y(), max.z()}, {max.x(), min.y(), max.z()}, {min.x(), max.y(), max.z()}, {max.x(), max.y(), max.z()}};
+
+    // Check if the bounding box is inside the frustum
+    for (const auto &plane : planes)
+    {
+        bool allOutside = true;
+
+        // Test all 8 corners against the current plane
+        for (const auto &corner : corners)
+        {
+            if (plane.a * corner.x() + plane.b * corner.y() + plane.c * corner.z() + plane.d >= 0)
+            {
+                allOutside = false; // At least one corner is inside
+                break;
+            }
+        }
+
+        if (allOutside)
+        {
+            return false;
+        }
+    }
+
+    return true; 
 }
 
-void TriangleMesh::setStaticColor(Vec3f color) {
+void TriangleMesh::setStaticColor(Vec3f color)
+{
     staticColor = color;
 }
 
-void TriangleMesh::drawBB(RenderState &state) {
-    auto* f = state.getOpenGLFunctions();
+void TriangleMesh::drawBB(RenderState &state)
+{
+    auto *f = state.getOpenGLFunctions();
     f->glBindVertexArray(VAObb.val);
-    //Transform BB to correct position.
+    // Transform BB to correct position.
     state.pushModelViewMatrix();
     state.getCurrentModelViewMatrix().translate(boundingBoxMid.x(), boundingBoxMid.y(), boundingBoxMid.z());
     state.getCurrentModelViewMatrix().scale(boundingBoxSize.x(), boundingBoxSize.y(), boundingBoxSize.z());
     f->glUniformMatrix4fv(state.getModelViewUniform(), 1, GL_FALSE, state.getCurrentModelViewMatrix().data());
-    //Set color to constant white.
-    //Bug in Qt: They flagged glVertexAttrib3f as deprecated in modern OpenGL, which is not true.
-    //We have to load it manually. Make it static so we do it only once.
+    // Set color to constant white.
+    // Bug in Qt: They flagged glVertexAttrib3f as deprecated in modern OpenGL, which is not true.
+    // We have to load it manually. Make it static so we do it only once.
     static auto glVertexAttrib3f = reinterpret_cast<glVertexAttrib3fPtr>(QOpenGLContext::currentContext()->getProcAddress("glVertexAttrib3f"));
     glVertexAttrib3f(2, 1.0f, 1.0f, 1.0f);
 
@@ -536,36 +675,40 @@ void TriangleMesh::drawBB(RenderState &state) {
     state.popModelViewMatrix();
 }
 
-void TriangleMesh::drawNormals(RenderState &state) {
-    auto* f = state.getOpenGLFunctions();
+void TriangleMesh::drawNormals(RenderState &state)
+{
+    auto *f = state.getOpenGLFunctions();
     f->glBindVertexArray(VAOn.val);
     f->glUniformMatrix4fv(state.getModelViewUniform(), 1, GL_FALSE, state.getCurrentModelViewMatrix().data());
 
-    //Set color to constant white.
-    //Bug in Qt: They flagged glVertexAttrib3f as deprecated in modern OpenGL, which is not true.
-    //We have to load it manually. Make it static so we do it only once.
+    // Set color to constant white.
+    // Bug in Qt: They flagged glVertexAttrib3f as deprecated in modern OpenGL, which is not true.
+    // We have to load it manually. Make it static so we do it only once.
     static auto glVertexAttrib3f = reinterpret_cast<glVertexAttrib3fPtr>(QOpenGLContext::currentContext()->getProcAddress("glVertexAttrib3f"));
     glVertexAttrib3f(2, 1.0f, 1.0f, 1.0f);
 
     f->glDrawArrays(GL_LINES, 0, vertices.size() * 2);
 }
 
-void TriangleMesh::generateSphere(QOpenGLFunctions_3_3_Core* f) {
+void TriangleMesh::generateSphere(QOpenGLFunctions_3_3_Core *f)
+{
     // The sphere consists of latdiv rings of longdiv faces.
     int longdiv = 200; // minimum 4
-    int latdiv  = 100; // minimum 2
+    int latdiv = 100;  // minimum 2
 
     setGLFunctionPtr(f);
 
     // Generate vertices.
-    for (int latitude = 0; latitude <= latdiv; latitude++) {
+    for (int latitude = 0; latitude <= latdiv; latitude++)
+    {
         float v = static_cast<float>(latitude) / static_cast<float>(latdiv);
         float latangle = v * M_PI;
 
         float extent = std::sin(latangle);
         float y = -std::cos(latangle);
 
-        for (int longitude = 0; longitude <= longdiv; longitude++) {
+        for (int longitude = 0; longitude <= longdiv; longitude++)
+        {
             float u = static_cast<float>(longitude) / static_cast<float>(longdiv);
             float longangle = u * 2.0f * M_PI;
 
@@ -576,15 +719,17 @@ void TriangleMesh::generateSphere(QOpenGLFunctions_3_3_Core* f) {
 
             vertices.push_back(pos);
             normals.push_back(pos);
-            texCoords.push_back({ 2.0f - 2.0f * u, v });
+            texCoords.push_back({2.0f - 2.0f * u, v});
             tangents.push_back(cross(Vec3f(0, 1, 0), pos));
         }
     }
 
-    for (int latitude = 0; latitude < latdiv; latitude++) {
+    for (int latitude = 0; latitude < latdiv; latitude++)
+    {
         unsigned int bottomBase = latitude * (longdiv + 1);
         unsigned int topBase = (latitude + 1) * (longdiv + 1);
-        for (int longitude = 0; longitude < longdiv; longitude++) {
+        for (int longitude = 0; longitude < longdiv; longitude++)
+        {
             unsigned int bottomCurrent = bottomBase + longitude;
             unsigned int bottomNext = bottomBase + (longitude + 1);
             unsigned int topCurrent = topBase + longitude;
@@ -602,7 +747,8 @@ void TriangleMesh::generateSphere(QOpenGLFunctions_3_3_Core* f) {
     createAllVBOs();
 }
 
-void TriangleMesh::generateTerrain(unsigned int h, unsigned int w, unsigned int iterations) {
+void TriangleMesh::generateTerrain(unsigned int h, unsigned int w, unsigned int iterations)
+{
     // TODO(3.1): Implement terrain generation.
 
     vertices.reserve(4);

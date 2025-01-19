@@ -24,12 +24,18 @@
 #include "trianglemesh.h"
 #include "vec3.h"
 #include "renderstate.h"
+#include <random>
+
 
 class OpenGLView : public QOpenGLWidget
 {
     Q_OBJECT
 public:
-    OpenGLView(QWidget* parent = nullptr);
+    OpenGLView(QWidget *parent = nullptr);
+    std::vector<Vec3f> objectPositions;
+    void generateRandomPosition(int newObjectCount = 500);
+    int mesh_drawn;
+    int mesh_culled;
 
 public slots:
     void setGridSize(int gridSize);
@@ -39,7 +45,7 @@ public slots:
     void cameraMoves(float deltaX, float deltaY, float deltaZ);
     void cameraRotates(float deltaX, float deltaY);
     void changeShader(unsigned int index);
-    void compileShader(const QString& vertexShaderPath, const QString& fragmentShaderPath);
+    void compileShader(const QString &vertexShaderPath, const QString &fragmentShaderPath);
     void changeColoringMode(TriangleMesh::ColoringType type);
     void toggleBoundingBox(bool enable);
     void toggleNormals(bool enable);
@@ -59,7 +65,7 @@ signals:
     void shaderCompiled(unsigned int index);
 
 private:
-    QOpenGLFunctions_3_3_Core* f;
+    QOpenGLFunctions_3_3_Core *f;
 
     // camera Information
     QVector3D cameraPos;
@@ -70,7 +76,7 @@ private:
     QPoint mousePos;
     float mouseSensitivy;
 
-    //rendered objects
+    // rendered objects
     unsigned int objectsLastRun, trianglesLastRun;
     std::vector<TriangleMesh> meshes;
     TriangleMesh sphereMesh; // sun
@@ -79,25 +85,25 @@ private:
     static GLuint csVAO, csVBOs[2];
     int gridSize;
 
-    //light information
+    // light information
     float lightMotionSpeed;
 
-    //FPS counter, needed for FPS calculation
+    // FPS counter, needed for FPS calculation
     unsigned int frameCounter = 0;
 
-    //timer for counting FPS
+    // timer for counting FPS
     QTimer fpsCounterTimer;
 
-    //timer for counting delta time of a frame, needed for light movement
+    // timer for counting delta time of a frame, needed for light movement
     QElapsedTimer deltaTimer;
     bool lightMoves = false;
 
-    //shaders
+    // shaders
     GLuint currentProgramID;
     std::vector<GLuint> programIDs;
     GLuint bumpProgramID;
 
-    //RenderState with matrix stack
+    // RenderState with matrix stack
     RenderState state;
 
     GLuint genCSVAO();
