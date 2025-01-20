@@ -765,17 +765,17 @@ void TriangleMesh::generateTerrain(unsigned int h, unsigned int w, unsigned int 
     // 3) Initialize corners with random seeds.
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(0.0f, 3.0f); //range, corner heights of map
-    heightmap[0][0]         = dist(gen);
-    heightmap[w][0]         = dist(gen);
-    heightmap[0][h]         = dist(gen);
-    heightmap[w][h]         = dist(gen);
+    std::uniform_real_distribution<float> dist(0.0f, 5.0f); //range, corner heights of map
+    heightmap[0][0] = dist(gen);
+    heightmap[w][0] = dist(gen);
+    heightmap[0][h] = dist(gen);
+    heightmap[w][h] = dist(gen);
 
-    // 4) Perform the Diamond-Square algorithm:
+    // 4) Diamond-Square algorithm:
     //    The 'stepSize' is current subdivision size; it is halved each iteration.
     //    The 'roughness' controls how wild the random additions are each iteration.
-    float roughness = 2.0f;  // you can tune or pass in from outside
-    int stepSize    = std::max(w, h); // start with the largest dimension
+    float roughness = 3.0f;
+    int stepSize    = std::max(w, h);
 
     while (stepSize > 1) {
         int halfStep = stepSize / 2;
@@ -860,7 +860,7 @@ void TriangleMesh::generateTerrain(unsigned int h, unsigned int w, unsigned int 
         for (int x = 0; x <= (int)w; ++x) {
             float y = heightmap[x][z];
             vertices.push_back(Vec3f(static_cast<float>(x), y, static_cast<float>(z)));
-            // fill placeholder normal , refine them later (calculateNormalsByArea).
+            // fill placeholder normal , refine later (calculateNormalsByArea).
             normals.push_back(Vec3f(0.0f, 1.0f, 0.0f));
             // Per-vertex color based on height:
             Vec3f c = computeColor(y);
@@ -905,38 +905,5 @@ void TriangleMesh::generateTerrain(unsigned int h, unsigned int w, unsigned int 
     //createAllVBOs();
 }
 
-void TriangleMesh::generateTerrain2(unsigned int /*h*/, unsigned int /*w*/, unsigned int /*iterations*/)
-{
-    // 1) Clear any old data
-    clear();
 
-    // 2) Load from OFF
-    loadOFF("../Models/terrain.off", false);
-
-    // 3) Prepare a “computeColor” lambda, that returns color based on y-value
-    auto computeColor = [&](float yValue) -> Vec3f {
-
-
-        //clamp or scale your yValue within bounding box range (select different values?)
-        //yValue = std::clamp(yValue, 0.0f, 10.0f);
-
-        if (yValue < 1.5f)  return Vec3f(0.0f, 0.0f, 1.0f);       // water
-        if (yValue < 2.5f)  return Vec3f(0.5f, 0.35f, 0.05f);     // sand
-        if (yValue < 4.0f)  return Vec3f(0.0f, 0.7f, 0.0f);       // grass
-        if (yValue < 6.0f)  return Vec3f(0.5f, 0.5f, 0.5f);       // rock
-        return Vec3f(1.0f, 1.0f, 1.0f);                           // snow
-    };
-
-    // 4) Create color for vertices based y-value
-    colors.resize(vertices.size());
-    for (size_t i = 0; i < vertices.size(); ++i) {
-        float y = vertices[i].y();
-        colors[i] = computeColor(y);
-    }
-
-
-
-    // 5) Upload data to GPU
-    createAllVBOs();
-}
 
