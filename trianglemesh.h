@@ -150,6 +150,7 @@ public:
 
     void generateSphere(QOpenGLFunctions_3_3_Core* f);
 
+    void generateTerrain2(unsigned int h, unsigned int w, unsigned int iterations);
     void generateTerrain(unsigned int h, unsigned int w, unsigned int iterations);
 
 private:
